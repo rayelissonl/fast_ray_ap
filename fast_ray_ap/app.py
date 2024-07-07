@@ -1,7 +1,9 @@
 from http import HTTPStatus
-from http.client import HTTPException
+# from http.client import HTTPException
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session
 
 from fast_ray_ap.schemas import (
     Message,
@@ -23,11 +25,22 @@ def read_root():
 
 @app.post('/users/', status_code=HTTPStatus.CREATED, response_model=UserPublic)
 def create_user(user: UserSchema):
-    user_with_id = UserDB(**user.model_dump(), id=len(database) + 1)  # (2)!
+    engine = create_engine(Settings().DATABASE_URL)
 
-    database.append(user_with_id)
+    with Session(engine) as session:
+        db_user = session.scalar(
+            select(User).where(
+                (User.username == user.username) | (User.email == user.email)
+            )
+        )
 
-    return user_with_id
+        if db_user:
+            return 'DEU RUIM'
+        # user_with_id = UserDB(**user.model_dump(), id=len(database) + 1)  # (2)!
+
+        # database.append(user_with_id)
+
+        # return user_with_id
 
 
 @app.get('/users/', response_model=UserList)
